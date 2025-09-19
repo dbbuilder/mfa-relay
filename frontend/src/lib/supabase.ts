@@ -71,10 +71,10 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       if (error.code === 'PGRST116') {
         console.log('getMFARelayProjectId: No project found with this slug')
       } else if (error.code === 'PGRST103' || error.message?.includes('policy')) {
-        console.log('getMFARelayProjectId: RLS policy prevents reading existing project, using fallback')
-        const fallbackId = '550e8400-e29b-41d4-a716-446655440000'
-        CACHED_PROJECT_ID = fallbackId
-        return fallbackId
+        console.log('getMFARelayProjectId: RLS policy prevents reading existing project, using known project ID')
+        const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
+        CACHED_PROJECT_ID = knownProjectId
+        return knownProjectId
       } else {
         console.error('Error fetching MFA Relay project:', error)
         return null
@@ -111,12 +111,12 @@ export async function getMFARelayProjectId(): Promise<string | null> {
 
       // If creation fails due to RLS policy violation, use fallback approach
       if (createError.code === '42501') { // RLS policy violation
-        console.log('getMFARelayProjectId: RLS prevents creation, using fallback project ID')
-        // Create a deterministic UUID based on the slug for consistency
-        const fallbackId = '550e8400-e29b-41d4-a716-446655440000' // Fixed UUID for mfa-relay
-        CACHED_PROJECT_ID = fallbackId
-        console.log('getMFARelayProjectId: Using fallback project ID:', fallbackId)
-        return fallbackId
+        console.log('getMFARelayProjectId: RLS prevents creation, using known project ID')
+        // Use the actual project ID that exists in the database
+        const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a' // Real MFA Relay project ID
+        CACHED_PROJECT_ID = knownProjectId
+        console.log('getMFARelayProjectId: Using known project ID:', knownProjectId)
+        return knownProjectId
       }
 
       // If creation fails due to conflict, try to get again (race condition)
