@@ -60,7 +60,7 @@ export default function HomePage() {
             Never Miss an{' '}
             <span className="text-indigo-600">MFA Code</span>{' '}
             Again
-            <span className="text-xs text-green-600 block mt-2">DEPLOY-FIXED-v606b78f</span>
+            <span className="text-xs text-green-600 block mt-2">DEPLOY-FIXED-vaaf37c9-PROD</span>
           </h1>
           <p className="text-xl text-gray-600 mb-12 max-w-3xl mx-auto">
             Automatically forward multi-factor authentication codes from your email to SMS.

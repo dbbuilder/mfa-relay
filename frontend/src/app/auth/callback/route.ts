@@ -6,6 +6,7 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
+  const from = searchParams.get('from') // Check if this is from add-email flow
 
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/dashboard'
@@ -55,6 +56,61 @@ export async function GET(request: NextRequest) {
 
       if (!exchangeError && data.session) {
         console.log('Session established successfully, redirecting to:', `${origin}${next}`)
+
+        // If this is from add-email flow, create OAuth email account
+        if (from === 'add-email' && data.user && data.session.provider_token) {
+          try {
+            // Get project ID
+            const { data: projects } = await supabase
+              .from('projects')
+              .select('id')
+              .eq('slug', 'mfa-relay')
+              .single()
+
+            if (projects?.id) {
+              // Check if this OAuth account already exists
+              const { data: existing } = await supabase
+                .from('mfa_email_accounts')
+                .select('id')
+                .eq('project_id', projects.id)
+                .eq('user_id', data.user.id)
+                .eq('email_address', data.user.email)
+                .eq('oauth_provider', data.session.provider)
+                .single()
+
+              if (!existing) {
+                // Create OAuth email account
+                const { error: insertError } = await supabase
+                  .from('mfa_email_accounts')
+                  .insert({
+                    project_id: projects.id,
+                    user_id: data.user.id,
+                    name: `${data.user.email} (OAuth)`,
+                    email_address: data.user.email,
+                    provider: data.session.provider === 'google' ? 'gmail' : 'outlook',
+                    oauth_provider: data.session.provider,
+                    oauth_token_encrypted: data.session.provider_token, // Store OAuth token
+                    oauth_refresh_token_encrypted: data.session.refresh_token,
+                    use_ssl: true,
+                    folder_name: 'INBOX',
+                    is_active: true,
+                    check_interval_seconds: 30
+                  })
+
+                if (insertError) {
+                  console.error('Failed to create OAuth email account:', insertError)
+                } else {
+                  console.log('OAuth email account created successfully')
+                }
+              } else {
+                console.log('OAuth email account already exists')
+              }
+            }
+          } catch (err) {
+            console.error('Error creating OAuth email account:', err)
+          }
+        }
+
         return response
       } else {
         console.error('Session exchange failed:', exchangeError?.message)
