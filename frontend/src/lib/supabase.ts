@@ -40,11 +40,11 @@ let CACHED_PROJECT_ID: string | null = null
 
 // Helper to get MFA Relay project ID
 export async function getMFARelayProjectId(): Promise<string | null> {
-  console.log('getMFARelayProjectId: Starting...')
+  console.log('getMFARelayProjectId: FIXED VERSION - Starting...')
 
   // Return cached ID if available
   if (CACHED_PROJECT_ID) {
-    console.log('getMFARelayProjectId: Using cached project ID:', CACHED_PROJECT_ID)
+    console.log('getMFARelayProjectId: FIXED VERSION - Using cached project ID:', CACHED_PROJECT_ID)
     return CACHED_PROJECT_ID
   }
 
@@ -52,7 +52,7 @@ export async function getMFARelayProjectId(): Promise<string | null> {
   // We confirmed via curl that the project exists but RLS prevents reading it
   const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
   CACHED_PROJECT_ID = knownProjectId
-  console.log('getMFARelayProjectId: Using known project ID (RLS bypass):', knownProjectId)
+  console.log('getMFARelayProjectId: FIXED VERSION - Using known project ID (RLS bypass):', knownProjectId)
   return knownProjectId
 
   // Note: The code below is commented out because RLS policies prevent anonymous access
