@@ -17,6 +17,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (user && projectId) {
       fetchData()
+    } else if (user && projectId === null) {
+      // If we have a user but no project ID, still stop loading to show the dashboard
+      setLoading(false)
     }
   }, [user, projectId])
 
@@ -91,6 +94,21 @@ export default function DashboardPage() {
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
               <p className="mt-4 text-gray-600">Loading your data...</p>
+            </div>
+          ) : !projectId ? (
+            <div className="text-center py-12">
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-yellow-800 mb-2">Project Setup Required</h3>
+                <p className="text-yellow-700 mb-4">
+                  Unable to load your project data. This might be a temporary issue with the database connection.
+                </p>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white px-4 py-2 rounded-md font-medium"
+                >
+                  Retry
+                </button>
+              </div>
             </div>
           ) : (
             <div className="grid lg:grid-cols-3 gap-8">

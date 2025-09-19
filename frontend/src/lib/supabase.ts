@@ -39,11 +39,20 @@ export const MFA_RELAY_PROJECT_SLUG = 'mfa-relay'
 export async function getMFARelayProjectId(): Promise<string | null> {
   console.log('getMFARelayProjectId: Starting query...')
   try {
-    // First try to get existing project
-    const { data, error } = await supabase
+    // Add timeout to all database operations
+    const timeoutMs = 8000
+
+    // First try to get existing project with timeout
+    const selectPromise = supabase
       .from('projects')
       .select('id')
       .eq('slug', MFA_RELAY_PROJECT_SLUG)
+
+    const selectTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Select query timeout')), timeoutMs)
+    )
+
+    const { data, error } = await Promise.race([selectPromise, selectTimeout]) as any
 
     console.log('getMFARelayProjectId: Query result:', { data, error: error?.message, count: data?.length })
 
@@ -58,9 +67,9 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       return data[0].id
     }
 
-    // If no project found, create it
+    // If no project found, create it with timeout
     console.log('getMFARelayProjectId: No project found, creating...')
-    const { data: newProject, error: createError } = await supabase
+    const insertPromise = supabase
       .from('projects')
       .insert({
         name: 'MFA Relay',
@@ -70,8 +79,31 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       .select('id')
       .single()
 
+    const insertTimeout = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Insert query timeout')), timeoutMs)
+    )
+
+    const { data: newProject, error: createError } = await Promise.race([insertPromise, insertTimeout]) as any
+
     if (createError) {
       console.error('Error creating MFA Relay project:', createError)
+      // If creation fails due to conflict, try to get again (race condition)
+      if (createError.code === '23505') { // unique violation
+        console.log('getMFARelayProjectId: Project created by another session, trying to fetch...')
+        try {
+          const { data: existingData } = await Promise.race([
+            supabase.from('projects').select('id').eq('slug', MFA_RELAY_PROJECT_SLUG).single(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Retry timeout')), 3000))
+          ]) as any
+
+          if (existingData?.id) {
+            console.log('getMFARelayProjectId: Found project after retry:', existingData.id)
+            return existingData.id
+          }
+        } catch (retryErr) {
+          console.error('getMFARelayProjectId: Retry failed:', retryErr)
+        }
+      }
       return null
     }
 

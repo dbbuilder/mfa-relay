@@ -56,17 +56,24 @@ export function useAuth() {
   const [projectId, setProjectId] = useState<string | null>(null)
 
   useEffect(() => {
+    let mounted = true
+
     // Get initial session
     const getInitialSession = async () => {
+      if (!mounted) return
+
       console.log('useAuth: Getting initial session...')
       try {
         // Add timeout to prevent hanging
         const sessionPromise = supabase.auth.getSession()
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session check timeout')), 10000)
+          setTimeout(() => reject(new Error('Session check timeout')), 5000)
         )
 
         const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any
+
+        if (!mounted) return
+
         console.log('useAuth: Session result:', {
           hasSession: !!session,
           hasUser: !!session?.user,
@@ -78,21 +85,36 @@ export function useAuth() {
 
         if (session?.user) {
           console.log('useAuth: Getting MFA Relay project ID...')
-          const id = await getMFARelayProjectId()
-          console.log('useAuth: Project ID result:', id)
-          setProjectId(id)
+          try {
+            const projectIdPromise = getMFARelayProjectId()
+            const projectTimeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Project ID timeout')), 5000)
+            )
 
-          // Auto-create OAuth email account if it doesn't exist
-          if (id && session.user.email) {
-            await createOAuthEmailAccount(id, session.user)
+            const id = await Promise.race([projectIdPromise, projectTimeoutPromise]) as string | null
+
+            if (!mounted) return
+
+            console.log('useAuth: Project ID result:', id)
+            setProjectId(id)
+
+            // Auto-create OAuth email account if it doesn't exist
+            if (id && session.user.email) {
+              createOAuthEmailAccount(id, session.user).catch(err =>
+                console.error('useAuth: Error creating OAuth email account:', err)
+              )
+            }
+          } catch (projectErr) {
+            console.error('useAuth: Error getting project ID:', projectErr)
+            if (mounted) setProjectId(null)
           }
         }
 
-        setLoading(false)
+        if (mounted) setLoading(false)
         console.log('useAuth: Initial session check complete')
       } catch (err) {
         console.error('useAuth: Error getting initial session:', err)
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
 
@@ -101,26 +123,46 @@ export function useAuth() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        if (!mounted) return
+
         console.log('useAuth: Auth state change:', { event, hasSession: !!session, hasUser: !!session?.user })
         setUser(session?.user ?? null)
 
         if (session?.user) {
-          const id = await getMFARelayProjectId()
-          setProjectId(id)
+          try {
+            const projectIdPromise = getMFARelayProjectId()
+            const projectTimeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Project ID timeout')), 5000)
+            )
 
-          // Auto-create OAuth email account if it doesn't exist
-          if (id && session.user.email) {
-            await createOAuthEmailAccount(id, session.user)
+            const id = await Promise.race([projectIdPromise, projectTimeoutPromise]) as string | null
+
+            if (!mounted) return
+
+            setProjectId(id)
+
+            // Auto-create OAuth email account if it doesn't exist
+            if (id && session.user.email) {
+              createOAuthEmailAccount(id, session.user).catch(err =>
+                console.error('useAuth: Error creating OAuth email account:', err)
+              )
+            }
+          } catch (projectErr) {
+            console.error('useAuth: Error getting project ID:', projectErr)
+            if (mounted) setProjectId(null)
           }
         } else {
           setProjectId(null)
         }
 
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     )
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const signOut = async () => {
