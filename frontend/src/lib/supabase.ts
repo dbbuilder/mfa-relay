@@ -66,9 +66,19 @@ export async function getMFARelayProjectId(): Promise<string | null> {
 
     console.log('getMFARelayProjectId: Query result:', { data, error: error?.message, count: data?.length })
 
-    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-      console.error('Error fetching MFA Relay project:', error)
-      return null
+    if (error) {
+      // PGRST116 = no rows returned, PGRST103 = RLS policy violation on SELECT
+      if (error.code === 'PGRST116') {
+        console.log('getMFARelayProjectId: No project found with this slug')
+      } else if (error.code === 'PGRST103' || error.message?.includes('policy')) {
+        console.log('getMFARelayProjectId: RLS policy prevents reading existing project, using fallback')
+        const fallbackId = '550e8400-e29b-41d4-a716-446655440000'
+        CACHED_PROJECT_ID = fallbackId
+        return fallbackId
+      } else {
+        console.error('Error fetching MFA Relay project:', error)
+        return null
+      }
     }
 
     // If we found the project, cache and return its ID

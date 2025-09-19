@@ -2,17 +2,17 @@
 
 ## RLS Policy Issue Fix
 
-The application is encountering a Row Level Security (RLS) policy violation when trying to create the MFA Relay project. This happens because the current RLS policies on the `projects` table don't allow authenticated users to create new projects.
+The MFA Relay project already exists in the database, but Row Level Security (RLS) policies are preventing authenticated users from reading it. The error "duplicate key value violates unique constraint" confirms the project exists.
 
-### Option 1: Run SQL Script Manually (Recommended)
+### Option 1: Fix RLS Policies (Recommended)
 
 1. Go to your Supabase dashboard → SQL Editor
-2. Copy and paste the contents of `fix-project-rls.sql`
+2. Copy and paste the contents of `get-existing-project.sql`
 3. Execute the script
 
 This will:
-- Create the MFA Relay project with proper permissions
-- Update RLS policies to allow project operations
+- Show the existing MFA Relay project details
+- Update RLS policies to allow authenticated users to read/write projects
 - Grant necessary permissions to authenticated users
 
 ### Option 2: Use Supabase CLI
