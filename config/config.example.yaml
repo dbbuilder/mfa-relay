@@ -1,0 +1,39 @@
+# MFARelay Configuration Example
+# Copy this file to config.yaml and customize for your setup
+
+# Email accounts to monitor for MFA codes
+email_accounts:
+  - name: "Personal Gmail"
+    host: "imap.gmail.com"
+    port: 993
+    username: "your-email@gmail.com"
+    password: "your-app-password"  # Use App Password for Gmail
+    ssl: true
+    folder: "INBOX"
+  
+  - name: "Work Outlook"
+    host: "outlook.office365.com"
+    port: 993
+    username: "work-email@company.com"
+    password: "your-password"
+    ssl: true
+    folder: "INBOX"
+
+# Twilio SMS configuration
+twilio:
+  account_sid: "your-twilio-account-sid"
+  auth_token: "your-twilio-auth-token"
+  from_number: "+1234567890"  # Your Twilio phone number
+  to_number: "+0987654321"    # Your personal phone number
+
+# Email monitoring settings
+email_monitoring:
+  check_interval: 30          # Check every 30 seconds
+  max_concurrent_checks: 5    # Maximum concurrent email checks
+
+# Logging configuration
+logging:
+  level: "INFO"               # DEBUG, INFO, WARNING, ERROR
+  file_path: "logs/mfarelay.log"
+  max_bytes: 10485760         # 10MB max log file size
+  backup_count: 5             # Keep 5 backup log files

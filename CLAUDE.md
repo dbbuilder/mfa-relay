@@ -72,8 +72,10 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 ## Deployment
 
 ### Vercel (Frontend)
+- **Production URL**: `https://mfa-relay.remote2me.com` (stable domain)
 - Automatic deployment via GitHub Actions
 - Environment variables configured in Vercel dashboard
+- Custom domain configured with Name.com DNS (A record: 76.76.21.21)
 - See `DEPLOYMENT.md` for detailed setup
 
 ### Railway/DigitalOcean (API)

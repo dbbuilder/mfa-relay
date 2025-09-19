@@ -1,0 +1,54 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+README.md
+DEPLOYMENT.md
+CLAUDE.md
+
+# Frontend
+frontend/
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.coverage
+.pytest_cache/
+.mypy_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Data
+data/
+
+# Config
+config/config.yaml
+.env
+.env.local
+
+# Temporary files
+tmp/
+temp/

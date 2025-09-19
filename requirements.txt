@@ -1,0 +1,20 @@
+# MFARelay Dependencies
+# Minimal dependencies for speed and lightness
+
+# Twilio SDK for SMS sending
+twilio==8.10.0
+
+# YAML configuration support
+PyYAML==6.0.1
+
+# Encryption support for sensitive config values (optional)
+cryptography==41.0.7
+
+# HTTP client for any additional API calls
+requests==2.31.0
+
+# Async support (included in Python 3.9+ but explicit for clarity)
+asyncio-throttle==1.0.2
+
+# Optional: APScheduler for advanced scheduling (if needed)
+# apscheduler==3.10.4

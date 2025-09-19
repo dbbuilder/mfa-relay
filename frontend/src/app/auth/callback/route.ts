@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient, type CookieOptions } from '@supabase/ssr'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -10,7 +10,14 @@ export async function GET(request: NextRequest) {
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/dashboard'
 
-  console.log('OAuth callback received:', { code: !!code, error, errorDescription })
+  console.log('OAuth callback received:', {
+    url: request.url,
+    origin,
+    code: code ? code.substring(0, 8) + '...' : null,
+    error,
+    errorDescription,
+    next
+  })
 
   if (error) {
     console.error('OAuth error:', error, errorDescription)
@@ -18,38 +25,44 @@ export async function GET(request: NextRequest) {
   }
 
   if (code) {
-    const supabase = createClient(
+    const response = NextResponse.redirect(`${origin}${next}`)
+
+    const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return request.cookies.get(name)?.value
+          },
+          set(name: string, value: string, options: CookieOptions) {
+            response.cookies.set(name, value, options)
+          },
+          remove(name: string, options: CookieOptions) {
+            response.cookies.set(name, '', { ...options, maxAge: 0 })
+          },
+        },
+      }
     )
 
-    const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
-    console.log('Code exchange result:', { success: !!data.session, error: exchangeError })
-
-    if (!exchangeError && data.session) {
-      const forwardedHost = request.headers.get('x-forwarded-host')
-      const isLocalEnv = process.env.NODE_ENV === 'development'
-
-      const redirectUrl = isLocalEnv
-        ? `${origin}${next}`
-        : forwardedHost
-          ? `https://${forwardedHost}${next}`
-          : `${origin}${next}`
-
-      console.log('Redirecting to:', redirectUrl)
-
-      // Set session cookie before redirect
-      const response = NextResponse.redirect(redirectUrl)
-      response.cookies.set('supabase-auth-token', data.session.access_token, {
-        httpOnly: false,
-        secure: true,
-        sameSite: 'lax',
-        maxAge: data.session.expires_in
+    try {
+      const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
+      console.log('Code exchange result:', {
+        success: !!data.session,
+        hasUser: !!data.user,
+        error: exchangeError?.message || null
       })
 
-      return response
-    } else {
-      console.error('Session exchange failed:', exchangeError)
+      if (!exchangeError && data.session) {
+        console.log('Session established successfully, redirecting to:', `${origin}${next}`)
+        return response
+      } else {
+        console.error('Session exchange failed:', exchangeError?.message)
+        return NextResponse.redirect(`${origin}/auth/auth-code-error`)
+      }
+    } catch (err) {
+      console.error('Exception during code exchange:', err)
+      return NextResponse.redirect(`${origin}/auth/auth-code-error`)
     }
   }
 

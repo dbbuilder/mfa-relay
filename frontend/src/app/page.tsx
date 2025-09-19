@@ -1,9 +1,32 @@
+'use client'
+
+import { useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Shield, Mail, Smartphone, ArrowRight } from 'lucide-react'
+
+function OAuthRedirectHandler() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    // Check if there's an OAuth code in the URL that should be handled by the callback
+    const code = searchParams.get('code')
+    if (code) {
+      // Redirect to the proper callback handler
+      router.replace(`/auth/callback?${searchParams.toString()}`)
+    }
+  }, [searchParams, router])
+
+  return null
+}
 
 export default function HomePage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+      <Suspense fallback={null}>
+        <OAuthRedirectHandler />
+      </Suspense>
       {/* Navigation */}
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

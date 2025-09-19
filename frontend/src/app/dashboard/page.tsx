@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import ProtectedRoute from '@/components/ProtectedRoute'
+import AddEmailModal from '@/components/AddEmailModal'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase, MFAEmailAccount, MFACodeLog } from '@/lib/supabase'
 import { Shield, Mail, Plus, Settings, LogOut, Activity, Smartphone } from 'lucide-react'
@@ -11,6 +12,7 @@ export default function DashboardPage() {
   const [emailAccounts, setEmailAccounts] = useState<MFAEmailAccount[]>([])
   const [recentCodes, setRecentCodes] = useState<MFACodeLog[]>([])
   const [loading, setLoading] = useState(true)
+  const [showAddEmailModal, setShowAddEmailModal] = useState(false)
 
   useEffect(() => {
     if (user && projectId) {
@@ -101,7 +103,10 @@ export default function DashboardPage() {
                         <Mail className="h-5 w-5 text-gray-400 mr-2" />
                         <h2 className="text-lg font-medium text-gray-900">Email Accounts</h2>
                       </div>
-                      <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center">
+                      <button
+                        onClick={() => setShowAddEmailModal(true)}
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
+                      >
                         <Plus className="h-4 w-4 mr-1" />
                         Add Email
                       </button>
@@ -115,7 +120,10 @@ export default function DashboardPage() {
                         <p className="text-gray-600 mb-4">
                           Add your first email account to start forwarding MFA codes
                         </p>
-                        <button className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium">
+                        <button
+                          onClick={() => setShowAddEmailModal(true)}
+                          className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium"
+                        >
                           Add Email Account
                         </button>
                       </div>
@@ -222,6 +230,16 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
+
+        {/* Add Email Modal */}
+        <AddEmailModal
+          isOpen={showAddEmailModal}
+          onClose={() => setShowAddEmailModal(false)}
+          onEmailAdded={() => {
+            fetchData()
+            setShowAddEmailModal(false)
+          }}
+        />
       </div>
     </ProtectedRoute>
   )

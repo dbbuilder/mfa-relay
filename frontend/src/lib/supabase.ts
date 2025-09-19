@@ -1,27 +1,86 @@
-import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
+  cookies: {
+    get(name: string) {
+      // Try to get cookie from document
+      if (typeof document !== 'undefined') {
+        const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+        return match ? match[2] : undefined
+      }
+      return undefined
+    },
+    set(name: string, value: string, options: any) {
+      if (typeof document !== 'undefined') {
+        let cookie = `${name}=${value}`
+        if (options?.maxAge) cookie += `; Max-Age=${options.maxAge}`
+        if (options?.path) cookie += `; Path=${options.path}`
+        if (options?.domain) cookie += `; Domain=${options.domain}`
+        if (options?.secure) cookie += '; Secure'
+        if (options?.sameSite) cookie += `; SameSite=${options.sameSite}`
+        document.cookie = cookie
+      }
+    },
+    remove(name: string, options: any) {
+      if (typeof document !== 'undefined') {
+        document.cookie = `${name}=; Max-Age=0; Path=${options?.path || '/'}`
+      }
+    }
+  }
+})
 
 // MFA Relay project ID - this ensures we only work with our project data
 export const MFA_RELAY_PROJECT_SLUG = 'mfa-relay'
 
 // Helper to get MFA Relay project ID
 export async function getMFARelayProjectId(): Promise<string | null> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('id')
-    .eq('slug', MFA_RELAY_PROJECT_SLUG)
-    .single()
+  console.log('getMFARelayProjectId: Starting query...')
+  try {
+    // First try to get existing project
+    const { data, error } = await supabase
+      .from('projects')
+      .select('id')
+      .eq('slug', MFA_RELAY_PROJECT_SLUG)
 
-  if (error) {
-    console.error('Error fetching MFA Relay project:', error)
+    console.log('getMFARelayProjectId: Query result:', { data, error: error?.message, count: data?.length })
+
+    if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
+      console.error('Error fetching MFA Relay project:', error)
+      return null
+    }
+
+    // If we found the project, return its ID
+    if (data && data.length > 0) {
+      console.log('getMFARelayProjectId: Found existing project:', data[0].id)
+      return data[0].id
+    }
+
+    // If no project found, create it
+    console.log('getMFARelayProjectId: No project found, creating...')
+    const { data: newProject, error: createError } = await supabase
+      .from('projects')
+      .insert({
+        name: 'MFA Relay',
+        slug: MFA_RELAY_PROJECT_SLUG,
+        settings: { max_email_accounts: 5, max_sms_per_month: 1000 }
+      })
+      .select('id')
+      .single()
+
+    if (createError) {
+      console.error('Error creating MFA Relay project:', createError)
+      return null
+    }
+
+    console.log('getMFARelayProjectId: Created project:', newProject?.id)
+    return newProject?.id || null
+  } catch (err) {
+    console.error('getMFARelayProjectId: Exception:', err)
     return null
   }
-
-  return data?.id || null
 }
 
 // Database types for MFA Relay
