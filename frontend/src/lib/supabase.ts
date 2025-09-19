@@ -40,7 +40,7 @@ let CACHED_PROJECT_ID: string | null = null
 
 // Helper to get MFA Relay project ID
 export async function getMFARelayProjectId(): Promise<string | null> {
-  console.log('getMFARelayProjectId: Starting query...')
+  console.log('getMFARelayProjectId: Starting...')
 
   // Return cached ID if available
   if (CACHED_PROJECT_ID) {
@@ -48,38 +48,30 @@ export async function getMFARelayProjectId(): Promise<string | null> {
     return CACHED_PROJECT_ID
   }
 
-  try {
-    // Add timeout to all database operations
-    const timeoutMs = 8000
+  // Use known project ID immediately since RLS blocks anonymous access
+  // We confirmed via curl that the project exists but RLS prevents reading it
+  const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
+  CACHED_PROJECT_ID = knownProjectId
+  console.log('getMFARelayProjectId: Using known project ID (RLS bypass):', knownProjectId)
+  return knownProjectId
 
-    // First try to get existing project with timeout
+  // Note: The code below is commented out because RLS policies prevent anonymous access
+  // This causes the JavaScript client to hang waiting for data that will never come
+  /*
+  try {
+    // Quick test with minimal timeout
     const selectPromise = supabase
       .from('projects')
       .select('id')
       .eq('slug', MFA_RELAY_PROJECT_SLUG)
 
     const selectTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Select query timeout')), timeoutMs)
+      setTimeout(() => reject(new Error('RLS timeout - using known ID')), 1000)
     )
 
     const { data, error } = await Promise.race([selectPromise, selectTimeout]) as any
 
     console.log('getMFARelayProjectId: Query result:', { data, error: error?.message, count: data?.length })
-
-    if (error) {
-      // PGRST116 = no rows returned, PGRST103 = RLS policy violation on SELECT
-      if (error.code === 'PGRST116') {
-        console.log('getMFARelayProjectId: No project found with this slug')
-      } else if (error.code === 'PGRST103' || error.message?.includes('policy')) {
-        console.log('getMFARelayProjectId: RLS policy prevents reading existing project, using known project ID')
-        const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
-        CACHED_PROJECT_ID = knownProjectId
-        return knownProjectId
-      } else {
-        console.error('Error fetching MFA Relay project:', error)
-        return null
-      }
-    }
 
     // If we found the project, cache and return its ID
     if (data && data.length > 0) {
@@ -88,70 +80,20 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       return data[0].id
     }
 
-    // If no project found, try to create it with timeout
-    console.log('getMFARelayProjectId: No project found, attempting to create...')
-    const insertPromise = supabase
-      .from('projects')
-      .insert({
-        name: 'MFA Relay',
-        slug: MFA_RELAY_PROJECT_SLUG,
-        settings: { max_email_accounts: 5, max_sms_per_month: 1000 }
-      })
-      .select('id')
-      .single()
-
-    const insertTimeout = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Insert query timeout')), timeoutMs)
-    )
-
-    const { data: newProject, error: createError } = await Promise.race([insertPromise, insertTimeout]) as any
-
-    if (createError) {
-      console.error('Error creating MFA Relay project:', createError)
-
-      // If creation fails due to RLS policy violation, use fallback approach
-      if (createError.code === '42501') { // RLS policy violation
-        console.log('getMFARelayProjectId: RLS prevents creation, using known project ID')
-        // Use the actual project ID that exists in the database
-        const knownProjectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a' // Real MFA Relay project ID
-        CACHED_PROJECT_ID = knownProjectId
-        console.log('getMFARelayProjectId: Using known project ID:', knownProjectId)
-        return knownProjectId
-      }
-
-      // If creation fails due to conflict, try to get again (race condition)
-      if (createError.code === '23505') { // unique violation
-        console.log('getMFARelayProjectId: Project created by another session, trying to fetch...')
-        try {
-          const { data: existingData } = await Promise.race([
-            supabase.from('projects').select('id').eq('slug', MFA_RELAY_PROJECT_SLUG).single(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Retry timeout')), 3000))
-          ]) as any
-
-          if (existingData?.id) {
-            CACHED_PROJECT_ID = existingData.id
-            console.log('getMFARelayProjectId: Found project after retry:', existingData.id)
-            return existingData.id
-          }
-        } catch (retryErr) {
-          console.error('getMFARelayProjectId: Retry failed:', retryErr)
-        }
-      }
-      return null
+    // If empty result (RLS blocking), use known ID
+    if (data && data.length === 0) {
+      CACHED_PROJECT_ID = knownProjectId
+      console.log('getMFARelayProjectId: RLS blocking access, using known ID:', knownProjectId)
+      return knownProjectId
     }
 
-    // Successfully created project
-    if (newProject?.id) {
-      CACHED_PROJECT_ID = newProject.id
-      console.log('getMFARelayProjectId: Created project:', newProject.id)
-      return newProject.id
-    }
-
-    return null
+    return knownProjectId
   } catch (err) {
-    console.error('getMFARelayProjectId: Exception:', err)
-    return null
+    console.error('getMFARelayProjectId: Using known ID due to error:', err)
+    CACHED_PROJECT_ID = knownProjectId
+    return knownProjectId
   }
+  */
 }
 
 // Database types for MFA Relay
