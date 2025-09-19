@@ -120,63 +120,21 @@ export default function AddEmailModal({ isOpen, onClose, onEmailAdded }: AddEmai
       setLoading(true)
       setError('')
 
-      // Create a popup window for OAuth without affecting current session
-      const popup = window.open(
-        '',
-        'oauth-popup',
-        'width=500,height=600,scrollbars=yes,resizable=yes'
-      )
-
-      if (!popup) {
-        setError('Popup blocked. Please allow popups and try again.')
-        return
-      }
-
-      // Get OAuth URL from Supabase but don't use it directly
-      const { data, error } = await supabase.auth.signInWithOAuth({
+      // Use standard OAuth flow - this will create a connected account
+      const { error } = await supabase.auth.signInWithOAuth({
         provider: provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/oauth-link?user_id=${user?.id}&project_id=${projectId}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
           scopes: provider === 'google'
             ? 'https://www.googleapis.com/auth/gmail.readonly'
-            : 'https://graph.microsoft.com/mail.read',
-          skipBrowserRedirect: true
+            : 'https://graph.microsoft.com/mail.read'
         }
       })
 
       if (error) {
-        popup.close()
-        setError(`OAuth failed: ${error.message}`)
-        return
+        setError(`OAuth sign-in failed: ${error.message}`)
       }
-
-      // Navigate popup to OAuth URL
-      if (data.url) {
-        popup.location.href = data.url
-      }
-
-      // Listen for popup completion
-      const pollTimer = setInterval(() => {
-        try {
-          if (popup.closed) {
-            clearInterval(pollTimer)
-            // Check if email account was added
-            onEmailAdded()
-            onClose()
-          }
-        } catch (e) {
-          // Cross-origin error, popup is still open
-        }
-      }, 1000)
-
-      // Close popup after 5 minutes
-      setTimeout(() => {
-        if (!popup.closed) {
-          popup.close()
-          clearInterval(pollTimer)
-          setError('OAuth timed out. Please try again.')
-        }
-      }, 300000)
+      // Note: The page will redirect to OAuth, so we don't need to handle success here
 
     } catch (err) {
       console.error('OAuth error:', err)
@@ -316,26 +274,27 @@ export default function AddEmailModal({ isOpen, onClose, onEmailAdded }: AddEmai
               </div>
 
               <div className="space-y-3 mb-6">
-                {/* OAuth Option - Temporarily Disabled */}
-                <div className="p-4 border border-yellow-200 bg-yellow-50 rounded-lg">
+                {/* OAuth Option */}
+                <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
                   <div className="flex items-center justify-between">
                     <div>
-                      <div className="font-medium text-yellow-900">OAuth Connection (Coming Soon)</div>
-                      <div className="text-sm text-yellow-700">One-click setup will be available soon</div>
+                      <div className="font-medium text-green-900">Recommended: OAuth Connection</div>
+                      <div className="text-sm text-green-700">Secure, creates a connected account</div>
                     </div>
                     <button
                       type="button"
-                      disabled={true}
-                      className="bg-gray-400 text-white px-4 py-2 rounded-md text-sm font-medium cursor-not-allowed opacity-50"
+                      onClick={() => handleOAuthSignIn(selectedProvider === 'gmail' ? 'google' : 'microsoft')}
+                      disabled={loading}
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md text-sm font-medium disabled:opacity-50"
                     >
-                      Coming Soon
+                      {loading ? 'Connecting...' : `Connect ${selectedProvider === 'gmail' ? 'Google' : 'Microsoft'}`}
                     </button>
                   </div>
                 </div>
 
                 {/* App Password Option */}
-                <div className="text-center text-gray-700 text-sm font-medium">
-                  Use App Password for now
+                <div className="text-center text-gray-500 text-sm">
+                  Or add as email account with App Password
                 </div>
               </div>
 

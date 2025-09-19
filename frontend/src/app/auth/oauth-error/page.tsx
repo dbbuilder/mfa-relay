@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 
-export default function OAuthErrorPage() {
+function OAuthErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
@@ -42,5 +42,20 @@ export default function OAuthErrorPage() {
         <p className="text-sm text-red-600">This window will close automatically...</p>
       </div>
     </div>
+  )
+}
+
+export default function OAuthErrorPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-red-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600 mx-auto"></div>
+          <p className="mt-2 text-red-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <OAuthErrorContent />
+    </Suspense>
   )
 }

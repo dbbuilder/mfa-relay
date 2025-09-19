@@ -57,54 +57,47 @@ export async function GET(request: NextRequest) {
       if (!exchangeError && data.session) {
         console.log('Session established successfully, redirecting to:', `${origin}${next}`)
 
-        // If this is from add-email flow, create OAuth email account
-        if (from === 'add-email' && data.user && data.session.provider_token) {
+        // Always create OAuth email account for MFA Relay project
+        if (data.user && data.session.provider_token) {
           try {
-            // Get project ID
-            const { data: projects } = await supabase
-              .from('projects')
+            // Use the known project ID (same as in supabase.ts)
+            const projectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
+
+            // Check if this OAuth account already exists
+            const { data: existing } = await supabase
+              .from('mfa_email_accounts')
               .select('id')
-              .eq('slug', 'mfa-relay')
+              .eq('project_id', projectId)
+              .eq('email_address', data.user.email)
+              .eq('oauth_provider', data.session.provider)
               .single()
 
-            if (projects?.id) {
-              // Check if this OAuth account already exists
-              const { data: existing } = await supabase
+            if (!existing) {
+              // Create OAuth email account linked to the OAuth user
+              const { error: insertError } = await supabase
                 .from('mfa_email_accounts')
-                .select('id')
-                .eq('project_id', projects.id)
-                .eq('user_id', data.user.id)
-                .eq('email_address', data.user.email)
-                .eq('oauth_provider', data.session.provider)
-                .single()
+                .insert({
+                  project_id: projectId,
+                  user_id: data.user.id, // This is the OAuth user's ID
+                  name: `${data.user.email} (OAuth)`,
+                  email_address: data.user.email,
+                  provider: data.session.provider === 'google' ? 'gmail' : 'outlook',
+                  oauth_provider: data.session.provider,
+                  oauth_token_encrypted: data.session.provider_token,
+                  oauth_refresh_token_encrypted: data.session.refresh_token,
+                  use_ssl: true,
+                  folder_name: 'INBOX',
+                  is_active: true,
+                  check_interval_seconds: 30
+                })
 
-              if (!existing) {
-                // Create OAuth email account
-                const { error: insertError } = await supabase
-                  .from('mfa_email_accounts')
-                  .insert({
-                    project_id: projects.id,
-                    user_id: data.user.id,
-                    name: `${data.user.email} (OAuth)`,
-                    email_address: data.user.email,
-                    provider: data.session.provider === 'google' ? 'gmail' : 'outlook',
-                    oauth_provider: data.session.provider,
-                    oauth_token_encrypted: data.session.provider_token, // Store OAuth token
-                    oauth_refresh_token_encrypted: data.session.refresh_token,
-                    use_ssl: true,
-                    folder_name: 'INBOX',
-                    is_active: true,
-                    check_interval_seconds: 30
-                  })
-
-                if (insertError) {
-                  console.error('Failed to create OAuth email account:', insertError)
-                } else {
-                  console.log('OAuth email account created successfully')
-                }
+              if (insertError) {
+                console.error('Failed to create OAuth email account:', insertError)
               } else {
-                console.log('OAuth email account already exists')
+                console.log('OAuth email account created successfully for user:', data.user.email)
               }
+            } else {
+              console.log('OAuth email account already exists for:', data.user.email)
             }
           } catch (err) {
             console.error('Error creating OAuth email account:', err)
