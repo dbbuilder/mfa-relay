@@ -12,6 +12,7 @@ interface AddEmailModalProps {
 }
 
 export default function AddEmailModal({ isOpen, onClose, onEmailAdded }: AddEmailModalProps) {
+  console.log('AddEmailModal render - isOpen:', isOpen)
   const { user, projectId } = useAuth()
   const [formData, setFormData] = useState({
     name: '',

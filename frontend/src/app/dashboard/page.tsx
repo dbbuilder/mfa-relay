@@ -122,7 +122,10 @@ export default function DashboardPage() {
                         <h2 className="text-lg font-medium text-gray-900">Email Accounts</h2>
                       </div>
                       <button
-                        onClick={() => setShowAddEmailModal(true)}
+                        onClick={() => {
+                          console.log('Add Email button clicked!')
+                          setShowAddEmailModal(true)
+                        }}
                         className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium flex items-center"
                       >
                         <Plus className="h-4 w-4 mr-1" />
@@ -139,7 +142,10 @@ export default function DashboardPage() {
                           Add your first email account to start forwarding MFA codes
                         </p>
                         <button
-                          onClick={() => setShowAddEmailModal(true)}
+                          onClick={() => {
+                            console.log('Add Email Account button clicked!')
+                            setShowAddEmailModal(true)
+                          }}
                           className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md font-medium"
                         >
                           Add Email Account
