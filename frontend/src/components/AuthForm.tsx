@@ -74,7 +74,7 @@ export default function AuthForm({ view = 'sign_in', redirectTo }: AuthFormProps
               },
             }}
             providers={['google', 'azure']}
-            redirectTo={redirectTo || `${window.location.origin}/dashboard`}
+            redirectTo={redirectTo || (typeof window !== 'undefined' ? `${window.location.origin}/dashboard` : '/dashboard')}
             onlyThirdPartyProviders={false}
             showLinks={true}
             magicLink={true}
