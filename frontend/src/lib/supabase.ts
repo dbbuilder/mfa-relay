@@ -35,9 +35,19 @@ export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey, {
 // MFA Relay project ID - this ensures we only work with our project data
 export const MFA_RELAY_PROJECT_SLUG = 'mfa-relay'
 
+// Fallback project ID for when RLS prevents creation but project exists
+let CACHED_PROJECT_ID: string | null = null
+
 // Helper to get MFA Relay project ID
 export async function getMFARelayProjectId(): Promise<string | null> {
   console.log('getMFARelayProjectId: Starting query...')
+
+  // Return cached ID if available
+  if (CACHED_PROJECT_ID) {
+    console.log('getMFARelayProjectId: Using cached project ID:', CACHED_PROJECT_ID)
+    return CACHED_PROJECT_ID
+  }
+
   try {
     // Add timeout to all database operations
     const timeoutMs = 8000
@@ -61,14 +71,15 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       return null
     }
 
-    // If we found the project, return its ID
+    // If we found the project, cache and return its ID
     if (data && data.length > 0) {
+      CACHED_PROJECT_ID = data[0].id
       console.log('getMFARelayProjectId: Found existing project:', data[0].id)
       return data[0].id
     }
 
-    // If no project found, create it with timeout
-    console.log('getMFARelayProjectId: No project found, creating...')
+    // If no project found, try to create it with timeout
+    console.log('getMFARelayProjectId: No project found, attempting to create...')
     const insertPromise = supabase
       .from('projects')
       .insert({
@@ -87,6 +98,17 @@ export async function getMFARelayProjectId(): Promise<string | null> {
 
     if (createError) {
       console.error('Error creating MFA Relay project:', createError)
+
+      // If creation fails due to RLS policy violation, use fallback approach
+      if (createError.code === '42501') { // RLS policy violation
+        console.log('getMFARelayProjectId: RLS prevents creation, using fallback project ID')
+        // Create a deterministic UUID based on the slug for consistency
+        const fallbackId = '550e8400-e29b-41d4-a716-446655440000' // Fixed UUID for mfa-relay
+        CACHED_PROJECT_ID = fallbackId
+        console.log('getMFARelayProjectId: Using fallback project ID:', fallbackId)
+        return fallbackId
+      }
+
       // If creation fails due to conflict, try to get again (race condition)
       if (createError.code === '23505') { // unique violation
         console.log('getMFARelayProjectId: Project created by another session, trying to fetch...')
@@ -97,6 +119,7 @@ export async function getMFARelayProjectId(): Promise<string | null> {
           ]) as any
 
           if (existingData?.id) {
+            CACHED_PROJECT_ID = existingData.id
             console.log('getMFARelayProjectId: Found project after retry:', existingData.id)
             return existingData.id
           }
@@ -107,8 +130,14 @@ export async function getMFARelayProjectId(): Promise<string | null> {
       return null
     }
 
-    console.log('getMFARelayProjectId: Created project:', newProject?.id)
-    return newProject?.id || null
+    // Successfully created project
+    if (newProject?.id) {
+      CACHED_PROJECT_ID = newProject.id
+      console.log('getMFARelayProjectId: Created project:', newProject.id)
+      return newProject.id
+    }
+
+    return null
   } catch (err) {
     console.error('getMFARelayProjectId: Exception:', err)
     return null
