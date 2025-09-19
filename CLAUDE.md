@@ -148,7 +148,9 @@ az rest --method PATCH \
 - **App ID**: `[Stored in oauth-credentials.json]`
 - **Client Secret**: `[Stored in oauth-credentials.json]` (expires in 2 years)
 - **Tenant ID**: `[Stored in oauth-credentials.json]`
-- **Redirect URI**: `https://grglttyirzxfdpbyuxut.supabase.co/auth/v1/callback`
+- **Redirect URIs**:
+  - `https://grglttyirzxfdpbyuxut.supabase.co/auth/v1/callback`
+  - `https://mfa-relay-frontend-4dv2e36v9-teds-projects-d50f6fce.vercel.app/auth/callback`
 - **Audience**: Personal and work Microsoft accounts
 - **Implicit Flow**: ID tokens enabled
 
