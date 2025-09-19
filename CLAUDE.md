@@ -115,6 +115,63 @@ NEXT_PUBLIC_API_URL=http://localhost:8000
 - **OAuth Integration**: Secure email access via Google/Microsoft APIs
 - **Real-time Updates**: Supabase real-time subscriptions for UI updates
 
+## Microsoft OAuth Setup (Azure AD)
+
+### Creating App Registration with Azure CLI
+```bash
+# Create app registration for Microsoft OAuth
+az ad app create \
+  --display-name "MFA Relay" \
+  --sign-in-audience "AzureADandPersonalMicrosoftAccount" \
+  --web-redirect-uris "https://grglttyirzxfdpbyuxut.supabase.co/auth/v1/callback" \
+  --required-resource-accesses '[{
+    "resourceAppId":"00000003-0000-0000-c000-000000000000",
+    "resourceAccess":[
+      {"id":"e1fe6dd8-ba31-4d61-89e7-88639da4683d","type":"Scope"},
+      {"id":"37f7f235-527c-4136-accd-4a02d197296e","type":"Scope"}
+    ]
+  }]'
+
+# Create client secret (2-year expiration)
+az ad app credential reset \
+  --id "APP_ID" \
+  --display-name "MFA Relay Client Secret" \
+  --years 2
+
+# Enable implicit ID token flow (required for Supabase)
+az rest --method PATCH \
+  --uri "https://graph.microsoft.com/v1.0/applications/OBJECT_ID" \
+  --body '{"web":{"implicitGrantSettings":{"enableIdTokenIssuance":true,"enableAccessTokenIssuance":false}}}'
+```
+
+### Current App Registration Details
+- **App ID**: `[Stored in oauth-credentials.json]`
+- **Client Secret**: `[Stored in oauth-credentials.json]` (expires in 2 years)
+- **Tenant ID**: `[Stored in oauth-credentials.json]`
+- **Redirect URI**: `https://grglttyirzxfdpbyuxut.supabase.co/auth/v1/callback`
+- **Audience**: Personal and work Microsoft accounts
+- **Implicit Flow**: ID tokens enabled
+
+### Key Learnings
+- Use `AzureADandPersonalMicrosoftAccount` for both personal and work Microsoft accounts
+- Supabase requires the redirect URI format: `https://PROJECT_REF.supabase.co/auth/v1/callback`
+- Must enable implicit ID token issuance for OAuth to work with Supabase
+- Azure CLI `--set` syntax doesn't work for nested objects; use Graph API directly
+- Required scopes: `User.Read` (e1fe6dd8) and `openid` (37f7f235) for basic profile access
+
+## Google OAuth Setup
+
+### Current Google OAuth App Details
+- **Client ID**: `[Stored in oauth-credentials.json]`
+- **Client Secret**: `[Stored in oauth-credentials.json]` (expires June 2025)
+- **Project ID**: `mfa-relay-oauth`
+- **Redirect URI**: `https://grglttyirzxfdpbyuxut.supabase.co/auth/v1/callback`
+
+### OAuth Credentials Storage
+- All OAuth credentials are stored in `oauth-credentials.json` (gitignored)
+- Includes Google, Microsoft, Supabase, and deployment credentials
+- File format includes expiration dates and important notes
+
 ## Development Notes
 
 - **Shared Database**: Multiple projects share the same Supabase instance
