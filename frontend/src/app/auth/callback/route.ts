@@ -7,6 +7,7 @@ export async function GET(request: NextRequest) {
   const error = searchParams.get('error')
   const errorDescription = searchParams.get('error_description')
   const from = searchParams.get('from') // Check if this is from add-email flow
+  const linkMode = searchParams.get('link_mode') // Check if this is account linking
 
   // if "next" is in param, use it as the redirect URL
   const next = searchParams.get('next') ?? '/dashboard'
@@ -55,10 +56,10 @@ export async function GET(request: NextRequest) {
       })
 
       if (!exchangeError && data.session) {
-        console.log('Session established successfully, redirecting to:', `${origin}${next}`)
+        console.log('Session established successfully, link mode:', linkMode)
 
-        // Always create OAuth email account for MFA Relay project
-        if (data.user && data.session.provider_token) {
+        // Handle account linking mode
+        if (linkMode === 'true' && data.user && data.session.provider_token) {
           try {
             // Use the known project ID (same as in supabase.ts)
             const projectId = '3a7fa9e5-268e-4a88-a525-3690f0d13e0a'
@@ -99,11 +100,17 @@ export async function GET(request: NextRequest) {
             } else {
               console.log('OAuth email account already exists for:', data.user.email)
             }
+
+            // Redirect to a special page that will restore the original session
+            return NextResponse.redirect(`${origin}/auth/oauth-restore?success=true`)
           } catch (err) {
             console.error('Error creating OAuth email account:', err)
+            return NextResponse.redirect(`${origin}/auth/oauth-restore?error=link_failed`)
           }
         }
 
+        // Normal OAuth flow (not linking mode)
+        console.log('Normal OAuth flow, redirecting to:', `${origin}${next}`)
         return response
       } else {
         console.error('Session exchange failed:', exchangeError?.message)

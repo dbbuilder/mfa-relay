@@ -120,11 +120,28 @@ export default function AddEmailModal({ isOpen, onClose, onEmailAdded }: AddEmai
       setLoading(true)
       setError('')
 
-      // Use standard OAuth flow - this will create a connected account
+      // Store the current user context for restoration after OAuth
+      const currentUser = user
+      const currentProjectId = projectId
+
+      if (!currentUser || !currentProjectId) {
+        setError('Please ensure you are logged in before adding OAuth accounts')
+        return
+      }
+
+      // Store current user info in sessionStorage for restoration
+      sessionStorage.setItem('oauth_link_context', JSON.stringify({
+        originalUserId: currentUser.id,
+        originalUserEmail: currentUser.email,
+        projectId: currentProjectId,
+        timestamp: Date.now()
+      }))
+
+      // Use OAuth flow with special callback for account linking
       const { error } = await supabase.auth.signInWithOAuth({
         provider: provider,
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/auth/callback?link_mode=true`,
           scopes: provider === 'google'
             ? 'https://www.googleapis.com/auth/gmail.readonly'
             : 'https://graph.microsoft.com/mail.read'
@@ -132,12 +149,14 @@ export default function AddEmailModal({ isOpen, onClose, onEmailAdded }: AddEmai
       })
 
       if (error) {
+        sessionStorage.removeItem('oauth_link_context')
         setError(`OAuth sign-in failed: ${error.message}`)
       }
       // Note: The page will redirect to OAuth, so we don't need to handle success here
 
     } catch (err) {
       console.error('OAuth error:', err)
+      sessionStorage.removeItem('oauth_link_context')
       setError('Failed to initiate OAuth sign-in')
     } finally {
       setLoading(false)
