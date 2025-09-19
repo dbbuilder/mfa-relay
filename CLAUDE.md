@@ -56,6 +56,10 @@ python src/main.py
 ### Row Level Security (RLS)
 All tables use RLS policies to ensure users can only access their own data within their assigned projects. Data is automatically isolated by `project_id` and `user_id`.
 
+**⚠️ CRITICAL**: RLS policies can block authenticated users from accessing data. If you encounter empty results or 403/406 errors, check RLS policies first.
+
+**Comprehensive Documentation**: See **[MFA_RELAY_LEARNINGS.md](MFA_RELAY_LEARNINGS.md)** for detailed troubleshooting guides, RLS solutions, authentication patterns, and deployment procedures learned during this project.
+
 ## Configuration
 
 ### Environment Variables
