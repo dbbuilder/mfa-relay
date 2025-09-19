@@ -1,0 +1,62 @@
+name: Deploy API to DigitalOcean
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+        - production
+        - staging
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies and test
+        run: |
+          pip install -r api/requirements.txt
+          # Add test commands here when tests are added
+          echo "No tests configured yet"
+
+      - name: Install doctl
+        uses: digitalocean/action-doctl@v2
+        with:
+          token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t mfa-relay-api:${{ github.sha }} .
+
+      - name: Log in to DigitalOcean Container Registry
+        run: doctl registry login --expiry-seconds 1200
+
+      - name: Tag and push image to DigitalOcean Container Registry
+        run: |
+          docker tag mfa-relay-api:${{ github.sha }} registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/mfa-relay-api:${{ github.sha }}
+          docker tag mfa-relay-api:${{ github.sha }} registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/mfa-relay-api:latest
+          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/mfa-relay-api:${{ github.sha }}
+          docker push registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/mfa-relay-api:latest
+
+      - name: Deploy to DigitalOcean App Platform
+        run: |
+          doctl apps create-deployment ${{ secrets.DO_APP_ID }} \
+            --image registry.digitalocean.com/${{ secrets.DO_REGISTRY_NAME }}/mfa-relay-api:${{ github.sha }}
+
+      - name: Wait for deployment
+        run: |
+          echo "Waiting for deployment to complete..."
+          sleep 60
+          doctl apps get ${{ secrets.DO_APP_ID }}

@@ -1,0 +1,18 @@
+# FastAPI API Dependencies
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Database and Auth
+supabase==2.0.2
+pyjwt==2.8.0
+
+# Existing MFA Relay Dependencies
+twilio==8.10.0
+PyYAML==6.0.1
+cryptography==41.0.7
+requests==2.31.0
+asyncio-throttle==1.0.2
+
+# Additional utilities
+python-dotenv==1.0.0
